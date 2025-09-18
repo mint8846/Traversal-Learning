@@ -1,0 +1,48 @@
+services:
+  udc:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    privileged: true
+    ports:
+      - "8080:8080"         # UDC Server Port (configurable)
+      - "111:111/tcp"       # RPC Portmapper
+      - "111:111/udp"       # RPC Portmapper
+      - "2049:2049/tcp"     # NFS
+      - "2049:2049/udp"     # NFS
+      - "20048:20048/tcp"   # Mountd
+      - "20048:20048/udp"   # Mountd
+    environment:
+      # recommend using UDC container hash
+      - UDC_ID=ad296f2941dc4940e6f5056194135f83952ac4e4648541b200d6683427ce5cff
+      # ODC container ID (Hash). If not provided, validation is skipped
+      - ODC_ID=f4bf87c7c91905b85d4577f181cd48a7b47ee2e390b1bbf46b956bf1747dd880
+      # If specified, only allow that IP. Otherwise, allow all IPs
+      - ODC_IP=
+      - OTP_SEED=default_opt_seed
+      # UDC HOST information. If empty, it will be set to the public IP.
+      - UDC_HOST=udc
+      # Model path is relative to container. Default: /model/model.tar
+      - MODEL_PATH=
+      # Model execution script. Script is separated to set custom parameters and environment variables. Default: /model/script.sh
+      - MODEL_SCRIPT=
+    volumes:
+      # require
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Docker's default filesystems (overlay2, aufs, etc.) do not support NFS export, so host mount is required
+      - ./nfs:/nfs/share
+      # Must specify the paths to the actual model and script files
+      - ./:/model/
+      # ODC model execution result file. Error if file doesn't exist or is empty
+      # Fixed internal dir: /tmp/result/
+      - ./result:/tmp/result/
+    # nfs file clear.
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    networks:
+      - shared-network
+networks:
+  shared-network:
+    driver: bridge
+    name: shared-network
+    external: true

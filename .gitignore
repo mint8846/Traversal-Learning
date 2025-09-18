@@ -1,0 +1,28 @@
+# Go build output
+/bin/
+dist/
+
+# Go test files
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# Dependencies
+vendor/
+
+# Environment files
+odc/.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

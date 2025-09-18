@@ -1,0 +1,35 @@
+services:
+  odc:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    tty: true
+    stdin_open: true
+    privileged: true
+    environment:
+      # ODC container ID (Hash). If not provided, validation is skipped
+      - ODC_ID=f4bf87c7c91905b85d4577f181cd48a7b47ee2e390b1bbf46b956bf1747dd880
+      # If specified, only allow that UDC ID. Otherwise, allow all
+      - UDC_ID=ad296f2941dc4940e6f5056194135f83952ac4e4648541b200d6683427ce5cff
+      - OTP_SEED=default_opt_seed
+      - UDC_SERVER=http://udc:8080
+      # Model execution script. Script is separated to set custom parameters and environment variables. Default: /model/script.sh
+      - MODEL_SCRIPT=
+      # Model execution result file name
+      - MODEL_OUTPUT_FILE_NAME=
+    volumes:
+      # require
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Must specify the paths to the actual model script file
+      - ./script.sh:/model/script.sh
+      # Container execution result. Returns error if file is missing or result is not success
+      # Fixed internal path: /tmp/odc/result.txt
+      - ./result/:/tmp/odc/
+
+    networks:
+      - shared-network
+
+networks:
+  shared-network:
+    # Use externally created network
+    external: true
