@@ -25,7 +25,7 @@ func NewNFSService(cfg *config.Config) *NFSService {
 	}
 }
 
-func (n *NFSService) Connect(url string) (string, error) {
+func (n *NFSService) Connect(url string) error {
 	commands := [][]string{
 		{"mkdir", "-p", n.cfg.NFSPath},
 		{"mount", "-t", "nfs", url, n.cfg.NFSPath},
@@ -34,15 +34,14 @@ func (n *NFSService) Connect(url string) (string, error) {
 	for _, cmd := range commands {
 		err := exec.Command(cmd[0], cmd[1:]...).Run()
 		if err != nil {
-			return "", fmt.Errorf("failed to execute command %s: %s", cmd, err)
+			return fmt.Errorf("failed to execute command %s: %s", cmd, err)
 		}
 	}
-	return n.cfg.NFSPath, nil
+
+	return nil
 }
 
-func (n *NFSService) GenerateNFSUrl() (string, error) {
-	host := n.cfg.ServerHost
-
+func (n *NFSService) GenerateNFSUrl(host, target string) (string, error) {
 	if host == "" {
 		serverIP, err := n.getServerIPAddress()
 		if err != nil {
@@ -53,7 +52,7 @@ func (n *NFSService) GenerateNFSUrl() (string, error) {
 		host = serverIP
 	}
 
-	return fmt.Sprintf("%s:/%s/", host, n.cfg.HostName), nil
+	return fmt.Sprintf("%s:/%s/", host, target), nil
 }
 
 func (n *NFSService) SetupSignalHandler() {
@@ -92,9 +91,16 @@ func (n *NFSService) getServerIPAddress() (string, error) {
 }
 
 func (n *NFSService) cleanup() {
-	if err := os.RemoveAll(filepath.Join(n.cfg.NFSPath, n.cfg.HostName)); err != nil {
+	if err := os.RemoveAll(n.cfg.NFSPath); err != nil {
 		log.Printf("Warning: Failed to clean mount path files: %v", err)
 	} else {
 		log.Printf("Mount path files cleaned: %s", n.cfg.NFSPath)
 	}
+}
+
+func (n *NFSService) GetPath(target string) string {
+	if target == "" {
+		return n.cfg.NFSPath
+	}
+	return filepath.Join(n.cfg.NFSPath, target)
 }

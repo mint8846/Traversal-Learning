@@ -14,12 +14,11 @@ services:
       - "20048:20048/udp"   # Mountd
     environment:
       # recommend using UDC container hash
-      - UDC_ID=ad296f2941dc4940e6f5056194135f83952ac4e4648541b200d6683427ce5cff
+      - UDC_ID=50c07323d778f35f471941d0e435cf67e1ca2d2dda4156961d6510015a556c9d
       # ODC container ID (Hash). If not provided, validation is skipped
-      - ODC_ID=f4bf87c7c91905b85d4577f181cd48a7b47ee2e390b1bbf46b956bf1747dd880
+      - ODC_ID=b47db6afe3254cf4a3797603227d0e7b993fcd20584ffec7d2cc5545066a2407
       # If specified, only allow that IP. Otherwise, allow all IPs
       - ODC_IP=
-      - OTP_SEED=default_opt_seed
       # UDC HOST information. If empty, it will be set to the public IP.
       - UDC_HOST=udc
       # Model path is relative to container. Default: /model/model.tar

@@ -10,7 +10,6 @@ type ErrorResponse struct {
 }
 
 type SetupResponse struct {
-	Key      string `json:"key"`
 	Path     string `json:"path"`
 	FileName string `json:"file_name"`
 }

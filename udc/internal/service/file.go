@@ -1,13 +1,13 @@
 package service
 
 import (
-	"crypto/rand"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/mint8846/Traversal-Learning/udc/internal/config"
 )
 
@@ -25,11 +25,11 @@ const (
 	BufferSize = 1024 * 1024 // 1MB
 )
 
-func (f *FileService) EncryptFile(srcFile, dstDir string, key []byte) ([]byte, string, error) {
+func (f *FileService) EncryptFile(srcFile, dstDir string, key []byte) (string, error) {
 	inputFile, err := os.Open(srcFile)
 	if err != nil {
 		log.Printf("EncryptFile: read file fail %v", err)
-		return nil, "", err
+		return "", err
 	}
 	defer inputFile.Close()
 
@@ -37,30 +37,26 @@ func (f *FileService) EncryptFile(srcFile, dstDir string, key []byte) ([]byte, s
 		log.Fatal("EncryptFile: Failed to create directory:", err)
 	}
 
-	outputFile, err := os.Create(filepath.Join(dstDir, generateUUID()))
+	outputFile, err := os.Create(filepath.Join(dstDir, uuid.NewString()))
 	if err != nil {
 		log.Printf("EncryptFile: write file create fail %v", err)
-		return nil, "", err
+		return "", err
 	}
 	defer outputFile.Close()
 
-	var crypto *CryptoService
-	if key == nil {
-		crypto, err = NewCryptoService()
-		if err != nil {
-			return nil, "", err
-		}
-	} else {
-		crypto = NewCryptoServiceWithKey(key)
+	crypto, err := NewCryptoServiceWithKey(key)
+	if err != nil {
+		log.Printf("EncryptFile: set crypto fail %v", err)
+		return "", err
 	}
 
 	log.Printf("encrypt file start(%s)", srcFile)
 	if err = f.processFile(inputFile, outputFile, crypto); err != nil {
-		return nil, "", err
+		return "", err
 	}
 	log.Printf("encrypt file complete(%s)", srcFile)
 
-	return crypto.GetKey(), filepath.Base(outputFile.Name()), nil
+	return filepath.Base(outputFile.Name()), nil
 }
 
 func (f *FileService) DecryptFile(srcDirPath, fileName, dstDirPath string, key []byte) (string, error) {
@@ -79,7 +75,12 @@ func (f *FileService) DecryptFile(srcDirPath, fileName, dstDirPath string, key [
 	defer outputFile.Close()
 
 	log.Printf("decrypt file start(%s)", fileName)
-	crypto := NewCryptoServiceWithKey(key)
+	crypto, err := NewCryptoServiceWithKey(key)
+	if err != nil {
+		log.Printf("EncryptFile: set crypto fail %v", err)
+		return "", err
+	}
+
 	if err = f.processFile(inputFile, outputFile, crypto); err != nil {
 		return "", err
 	}
@@ -132,13 +133,4 @@ func (f *FileService) processFile(inputFile, outputFile *os.File, crypto *Crypto
 	}
 
 	return nil
-}
-
-func generateUUID() string {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }

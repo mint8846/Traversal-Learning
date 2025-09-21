@@ -12,15 +12,20 @@ func Setup(e *echo.Echo, cfg *config.Config) {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	// defer func()
-	handler.SetId(cfg.ID)
 
 	authMiddleware := filter.New(cfg)
 
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("auth_middleware", authMiddleware)
+			return next(c)
+		}
+	})
+
 	// API route group
 	api := e.Group("/api")
-	api.Use(authMiddleware.Verify)
 
-	api.GET("/connect", handler.Connect)
-	api.POST("/model", handler.Model)
-	api.POST("/result", handler.Result)
+	api.GET("/connect", handler.Connect, authMiddleware.CreateSession)
+	api.POST("/model", handler.Model, authMiddleware.Authenticate)
+	api.POST("/result", handler.Result, authMiddleware.AuthenticateWithCleanup)
 }

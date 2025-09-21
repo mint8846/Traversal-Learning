@@ -26,12 +26,33 @@ func NewHTTPClient(server string, timeout time.Duration) *HTTPClient {
 	}
 }
 
-func (c *HTTPClient) Get(path string) (resp *http.Response, err error) {
+type RequestOption func(*http.Request)
+
+func WithHeader(key, value string) RequestOption {
+	return func(req *http.Request) {
+		req.Header.Set(key, value)
+	}
+}
+
+func WithHeaders(headers map[string]string) RequestOption {
+	return func(req *http.Request) {
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
+	}
+}
+
+func (c *HTTPClient) Get(path string, options ...RequestOption) (resp *http.Response, err error) {
 	req, err := http.NewRequest("GET", c.server+path, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	c.addDefaultHeaders(req)
+
+	for _, option := range options {
+		option(req)
+	}
 
 	return c.Client.Do(req)
 }
@@ -66,11 +87,11 @@ func (c *HTTPClient) Post(path string, body interface{}) (resp *http.Response, e
 	return c.Client.Do(req)
 }
 
-func (c *HTTPClient) SetDefaultHeader(key, value string) {
+func (c *HTTPClient) AddDefaultHeader(key, value string) {
 	c.defaultHeaders[key] = value
 }
 
-func (c *HTTPClient) SetDefaultHeaders(headers map[string]string) {
+func (c *HTTPClient) AddDefaultHeaders(headers map[string]string) {
 	for key, value := range headers {
 		c.defaultHeaders[key] = value
 	}

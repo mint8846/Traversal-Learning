@@ -8,11 +8,10 @@ import (
 
 type Config struct {
 	ID          string
-	HostName    string
 	ResultDir   string
 	ServerHost  string
 	ODC         ODC
-	OTP         OTP
+	OTPPeriod   uint
 	ModelPath   string
 	ModelScript string
 	NFSPath     string
@@ -24,31 +23,17 @@ type ODC struct {
 	ID string
 }
 
-type OTP struct {
-	Seed   string
-	Period uint
-}
-
 func Load() (*Config, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Config{
 		ID:         getEnv("UDC_ID", "udc_id"),
-		HostName:   hostname,
 		ResultDir:  "/tmp/result/",
 		ServerHost: getEnv("UDC_HOST", ""),
 		ODC: ODC{
 			IP: getEnv("ODC_IP", ""),
 			ID: getEnv("ODC_ID", ""),
 		},
-		OTP: OTP{
-			Seed: getEnv("OTP_SEED", "default_opt_seed"),
-			// default 180 sec
-			Period: uint(getEnvInt("OTP_PERIOD", 180)),
-		},
+		// default 180 sec
+		OTPPeriod:   uint(getEnvInt("OTP_PERIOD", 180)),
 		ModelPath:   getEnv("MODEL_PATH", "/model/model.tar"),
 		ModelScript: getEnv("MODEL_SCRIPT", "/model/script.sh"),
 		// In this example, default environment variable values are defined in the Dockerfile

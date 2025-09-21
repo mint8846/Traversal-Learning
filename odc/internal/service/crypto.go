@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"fmt"
 )
 
@@ -13,26 +12,12 @@ type CryptoService struct {
 	key []byte
 }
 
-func NewCryptoService() (*CryptoService, error) {
-	key, err := generateKey()
-	if err != nil {
-		return nil, err
+func NewCryptoServiceWithKey(key []byte) (*CryptoService, error) {
+	if key == nil {
+		return nil, fmt.Errorf("key empty")
 	}
+
 	return &CryptoService{key: key}, nil
-}
-
-func NewCryptoServiceWithKey(key []byte) *CryptoService {
-	return &CryptoService{key: key}
-}
-
-func generateKey() ([]byte, error) {
-	key := make([]byte, 32)
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate AES-256 key: %w", err)
-	}
-
-	return key, nil
 }
 
 func (c *CryptoService) GetKey() []byte {

@@ -1,88 +1,88 @@
 package handler
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
-
+	"github.com/mint8846/Traversal-Learning/udc/internal/filter"
 	"github.com/mint8846/Traversal-Learning/udc/internal/model"
 	"github.com/mint8846/Traversal-Learning/udc/internal/service"
+	"github.com/mint8846/Traversal-Learning/udc/internal/utils"
 )
 
-var udcID = ""
-var internalErrorCode = "999"
-var udcKey []byte = nil
-
-func SetId(id string) {
-	udcID = id
-}
+var (
+	internalErrorCode = "999"
+)
 
 func Connect(c echo.Context) error {
-	return c.JSON(http.StatusOK, model.ConnectResponse{ID: udcID})
+	return c.JSON(http.StatusOK, model.ConnectResponse{ID: service.Default.Cfg.ID})
 }
 
 func Model(c echo.Context) error {
-	dirPath := filepath.Join(service.Default.Cfg.NFSPath, service.Default.Cfg.HostName)
+	seedKey, err := filter.GetSessionID(c)
+	if err != nil {
+		return err
+	}
 
-	newKey, fileName, err := service.Default.File.EncryptFile(service.Default.Cfg.ModelPath, dirPath, udcKey)
+	encryptKey, err := service.Default.OTP.Generate(seedKey, service.Default.Cfg.OTPPeriod, time.Now())
+	if err != nil {
+		log.Printf("Model: OTP Generate fail %v", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "key generate fail"})
+	}
+
+	sessionID := utils.HashB64([]byte(seedKey))
+	dirPath := service.Default.NFS.GetPath(sessionID)
+
+	fileName, err := service.Default.File.EncryptFile(service.Default.Cfg.ModelPath, dirPath, encryptKey)
 	if err != nil {
 		log.Printf("EncryptFile failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "EncryptFile failed"})
 	}
-	log.Printf("Model: fileName(%s)", fileName)
+	log.Printf("Model: path(%s/%s)", dirPath, fileName)
 
-	// Set key if it was nil
-	if udcKey == nil {
-		udcKey = newKey
-	}
-
-	udcKey, err := service.Default.OTP.EncryptKey(udcKey)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "EncryptKey failed"})
-	}
-	log.Printf("Model: UDC key(%s)", udcKey)
-
-	nfsURL, err := service.Default.NFS.GenerateNFSUrl()
+	nfsURL, err := service.Default.NFS.GenerateNFSUrl(service.Default.Cfg.ServerHost, sessionID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "Create Model Path failed"})
 	}
 	log.Printf("Model: nfsPath(%s)", nfsURL)
 
 	return c.JSON(http.StatusOK, model.SetupResponse{
-		Key:      udcKey,
 		Path:     nfsURL,
 		FileName: fileName,
 	})
 }
 
 func Result(c echo.Context) error {
-	req := new(model.ResultDataRequest)
-	if err := c.Bind(req); err != nil {
+	seedKey, err := filter.GetSessionID(c)
+	if err != nil {
 		return err
 	}
-	resultDir := filepath.Join(service.Default.Cfg.NFSPath, service.Default.Cfg.HostName)
-	log.Printf("Result: result dir path(%s)", resultDir)
 
-	_, err := service.Default.File.DecryptFile(resultDir, req.FileName, service.Default.Cfg.ResultDir, udcKey)
+	decryptKey, err := service.Default.OTP.Generate(seedKey, service.Default.Cfg.OTPPeriod, time.Now())
 	if err != nil {
-		return fmt.Errorf("result: decrpyt fail %v", err)
+		log.Printf("Result: OTP Generate fail %v", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "key generate fail"})
 	}
 
-	go func() {
-		time.Sleep(100 * time.Millisecond) // wait response time ..
-		log.Printf("Result: Process completed, sending SIGTERM to self...")
+	req := new(model.ResultDataRequest)
+	if err = c.Bind(req); err != nil {
+		return err
+	}
+	resultDir := service.Default.NFS.GetPath(utils.HashB64([]byte(seedKey)))
+	log.Printf("Result: result dir path(%s)", resultDir)
 
-		if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
-			log.Printf("Failed to send SIGTERM: %v", err)
-			os.Exit(0) // if SIGTERM fail.
-		}
-	}()
+	_, err = service.Default.File.DecryptFile(resultDir, req.FileName, service.Default.Cfg.ResultDir, decryptKey)
+	if err != nil {
+		log.Printf("Result: decrypt fail %v", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "decrypt fail"})
+	}
+
+	if err = os.RemoveAll(resultDir); err != nil {
+		log.Printf("Result: clean(%s) failed(%v)", resultDir, err)
+	}
 
 	return c.JSON(http.StatusOK, nil)
 }

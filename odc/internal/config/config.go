@@ -5,10 +5,14 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/mint8846/Traversal-Learning/odc/internal/utils"
 )
 
 type Config struct {
 	ID              string
+	SessionKey      string
 	NFSPath         string
 	ResultFile      string
 	UDC             UDC
@@ -29,7 +33,11 @@ type OTP struct {
 }
 
 func Load() (*Config, error) {
+	seed := getEnv("OTP_SEED", uuid.NewString())
+	log.Printf("config: seed key(%s)", seed)
+
 	return &Config{
+		SessionKey: utils.HashB64([]byte(seed)),
 		ResultFile: "/tmp/odc/result.txt",
 		ID:         getEnv("ODC_ID", "odc_id"),
 		NFSPath:    getEnv("MOUNT_PATH", "/tmp/nfs"),
@@ -40,7 +48,7 @@ func Load() (*Config, error) {
 			HTTPClientTimeout: time.Duration(getEnvInt("UDC_HTTP_TIMEOUT", 3600)),
 		},
 		OTP: OTP{
-			Seed: getEnv("OTP_SEED", "default_opt_seed"),
+			Seed: seed,
 			// default 180 sec
 			Period: uint(getEnvInt("OTP_PERIOD", 180)),
 		},
