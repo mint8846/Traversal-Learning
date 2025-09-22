@@ -15,11 +15,6 @@ func main() {
 
 	e := echo.New()
 
-	runner := service.NewRunnerService(cfg)
-	if err = runner.ExecuteModel(); err != nil {
-		return
-	}
-
 	service.Initialize(cfg)
 	router.Setup(e, cfg)
 

@@ -17,7 +17,7 @@ func NewRunnerService(cfg *config.Config) *RunnerService {
 	return &RunnerService{cfg: cfg}
 }
 
-func (r *RunnerService) ExecuteModel() error {
+func (r *RunnerService) ExecuteModel(params ...string) error {
 	// 1. Load docker image from tar
 	imageName, err := r.loadContainerImage()
 	if err != nil {
@@ -25,7 +25,7 @@ func (r *RunnerService) ExecuteModel() error {
 	}
 	log.Printf("ExecuteModel: imageName: %s", imageName)
 
-	if err = r.runContainer(); err != nil {
+	if err = r.runContainer(params...); err != nil {
 		return err
 	}
 	return nil
@@ -54,16 +54,18 @@ func (r *RunnerService) loadContainerImage() (string, error) {
 	return "", fmt.Errorf("could not find loaded image name")
 }
 
-func (r *RunnerService) runContainer() error {
+func (r *RunnerService) runContainer(params ...string) error {
 	if err := exec.Command("chmod", "+x", r.cfg.ModelScript).Run(); err != nil {
 		return fmt.Errorf("runContainer: chmod failed: %v", err)
 	}
-	cmd := exec.Command(r.cfg.ModelScript)
+
+	cmd := exec.Command(r.cfg.ModelScript, params...)
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("runContainer: failed: %v, output: %s", err, string(output))
 	}
 
-	log.Printf("runContainer success")
+	log.Printf("runContainer success with params: %v", params)
 	return nil
 }

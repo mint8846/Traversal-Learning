@@ -10,7 +10,7 @@ services:
       # ODC container ID (Hash). If not provided, validation is skipped
       - ODC_ID=b47db6afe3254cf4a3797603227d0e7b993fcd20584ffec7d2cc5545066a2407
       # If specified, only allow that UDC ID. Otherwise, allow all
-      - UDC_ID=50c07323d778f35f471941d0e435cf67e1ca2d2dda4156961d6510015a556c9d
+      - UDC_ID=b4e92018ba7f08ac1b75991052460d194ca5c88a766a45c7b914d57a524f16ad
       - OTP_SEED=
       - UDC_SERVER=http://udc:8080
       # Model execution script. Script is separated to set custom parameters and environment variables. Default: /model/script.sh

@@ -71,18 +71,27 @@ func Result(c echo.Context) error {
 	if err = c.Bind(req); err != nil {
 		return err
 	}
-	resultDir := service.Default.NFS.GetPath(utils.HashB64([]byte(seedKey)))
+	sessionKey := utils.HashB64([]byte(seedKey))
+	resultDir := service.Default.NFS.GetPath(sessionKey)
 	log.Printf("Result: result dir path(%s)", resultDir)
 
-	_, err = service.Default.File.DecryptFile(resultDir, req.FileName, service.Default.Cfg.ResultDir, decryptKey)
+	filePath, err := service.Default.File.DecryptFile(resultDir, req.FileName, service.Default.Cfg.ResultDir, decryptKey)
 	if err != nil {
 		log.Printf("Result: decrypt fail %v", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{Code: internalErrorCode, Message: "decrypt fail"})
 	}
 
-	if err = os.RemoveAll(resultDir); err != nil {
+	go processModelAndCleanup(sessionKey, filePath, resultDir)
+
+	return c.JSON(http.StatusOK, nil)
+}
+
+func processModelAndCleanup(sessionKey, resultPath, resultDir string) {
+	if err := os.RemoveAll(resultDir); err != nil {
 		log.Printf("Result: clean(%s) failed(%v)", resultDir, err)
 	}
 
-	return c.JSON(http.StatusOK, nil)
+	if err := service.Default.Runner.ExecuteModel(resultPath); err != nil {
+		log.Printf("Result: (%s)model execute fial(%v)", sessionKey, err)
+	}
 }
