@@ -25,7 +25,6 @@ func Setup(e *echo.Echo, cfg *config.Config) {
 	// API route group
 	api := e.Group("/api")
 
-	api.GET("/connect", handler.Connect, authMiddleware.CreateSession)
-	api.POST("/model", handler.Model, authMiddleware.Authenticate)
+	api.POST("/model", handler.Model, authMiddleware.CreateSession)
 	api.POST("/result", handler.Result, authMiddleware.AuthenticateWithCleanup)
 }

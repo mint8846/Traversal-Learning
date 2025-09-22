@@ -34,13 +34,13 @@ func WithHeader(key, value string) RequestOption {
 	}
 }
 
-func WithHeaders(headers map[string]string) RequestOption {
-	return func(req *http.Request) {
-		for key, value := range headers {
-			req.Header.Set(key, value)
-		}
-	}
-}
+//func WithHeaders(headers map[string]string) RequestOption {
+//	return func(req *http.Request) {
+//		for key, value := range headers {
+//			req.Header.Set(key, value)
+//		}
+//	}
+//}
 
 func (c *HTTPClient) Get(path string, options ...RequestOption) (resp *http.Response, err error) {
 	req, err := http.NewRequest("GET", c.server+path, nil)
@@ -57,7 +57,7 @@ func (c *HTTPClient) Get(path string, options ...RequestOption) (resp *http.Resp
 	return c.Client.Do(req)
 }
 
-func (c *HTTPClient) Post(path string, body interface{}) (resp *http.Response, err error) {
+func (c *HTTPClient) Post(path string, body interface{}, options ...RequestOption) (resp *http.Response, err error) {
 	var reader io.Reader
 
 	switch v := body.(type) {
@@ -84,6 +84,10 @@ func (c *HTTPClient) Post(path string, body interface{}) (resp *http.Response, e
 
 	c.addDefaultHeaders(req)
 
+	for _, option := range options {
+		option(req)
+	}
+
 	return c.Client.Do(req)
 }
 
@@ -91,11 +95,11 @@ func (c *HTTPClient) AddDefaultHeader(key, value string) {
 	c.defaultHeaders[key] = value
 }
 
-func (c *HTTPClient) AddDefaultHeaders(headers map[string]string) {
-	for key, value := range headers {
-		c.defaultHeaders[key] = value
-	}
-}
+//func (c *HTTPClient) AddDefaultHeaders(headers map[string]string) {
+//	for key, value := range headers {
+//		c.defaultHeaders[key] = value
+//	}
+//}
 
 func (c *HTTPClient) GetBody(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()

@@ -17,10 +17,6 @@ var (
 	internalErrorCode = "999"
 )
 
-func Connect(c echo.Context) error {
-	return c.JSON(http.StatusOK, model.ConnectResponse{ID: service.Default.Cfg.ID})
-}
-
 func Model(c echo.Context) error {
 	seedKey, err := filter.GetSessionID(c)
 	if err != nil {
@@ -50,6 +46,7 @@ func Model(c echo.Context) error {
 	log.Printf("Model: nfsPath(%s)", nfsURL)
 
 	return c.JSON(http.StatusOK, model.SetupResponse{
+		ID:       service.Default.Cfg.ID,
 		Path:     nfsURL,
 		FileName: fileName,
 	})
@@ -91,7 +88,7 @@ func processModelAndCleanup(sessionKey, resultPath, resultDir string) {
 		log.Printf("Result: clean(%s) failed(%v)", resultDir, err)
 	}
 
-	if err := service.Default.Runner.ExecuteModel(resultPath); err != nil {
+	if err := service.Default.Runner.ExecuteModel(service.Default.Cfg.ModelPath, resultPath); err != nil {
 		log.Printf("Result: (%s)model execute fial(%v)", sessionKey, err)
 	}
 }

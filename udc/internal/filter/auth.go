@@ -40,12 +40,19 @@ func (a *AuthMiddleware) CreateSession(next echo.HandlerFunc) echo.HandlerFunc {
 			return err
 		}
 
+		seedKey := c.Request().Header.Get("X-SEED-ID")
+		if seedKey == "" {
+			return echo.NewHTTPError(http.StatusUnauthorized, "SEED key required")
+		}
+
+		c.Set(SessionKey, seedKey)
+
 		err := next(c)
 		if err != nil {
 			return err
 		}
 
-		if err = a.createSession(c); err != nil {
+		if err = a.createSession(seedKey); err != nil {
 			return err
 		}
 
@@ -53,15 +60,7 @@ func (a *AuthMiddleware) CreateSession(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func (a *AuthMiddleware) Authenticate(next echo.HandlerFunc) echo.HandlerFunc {
-	return a.authenticationWithOptions(next, false)
-}
-
 func (a *AuthMiddleware) AuthenticateWithCleanup(next echo.HandlerFunc) echo.HandlerFunc {
-	return a.authenticationWithOptions(next, true)
-}
-
-func (a *AuthMiddleware) authenticationWithOptions(next echo.HandlerFunc, deleteAfter bool) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if err := a.validateClient(c); err != nil {
 			return err
@@ -81,12 +80,11 @@ func (a *AuthMiddleware) authenticationWithOptions(next echo.HandlerFunc, delete
 
 		err = next(c)
 
-		if deleteAfter && err != nil {
-			a.deleteSession(sessionKey)
-		}
+		a.deleteSession(sessionKey)
 		return err
 	}
 }
+
 func GetSessionID(c echo.Context) (string, error) {
 	value := c.Get(SessionKey)
 	if value == nil {
@@ -117,9 +115,8 @@ func (a *AuthMiddleware) validateClient(c echo.Context) error {
 	return nil
 }
 
-func (a *AuthMiddleware) createSession(c echo.Context) error {
-	id := c.Request().Header.Get("X-SEED-ID")
-	sessionKey := utils.HashB64([]byte(id))
+func (a *AuthMiddleware) createSession(seedKey string) error {
+	sessionKey := utils.HashB64([]byte(seedKey))
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -129,7 +126,7 @@ func (a *AuthMiddleware) createSession(c echo.Context) error {
 	}
 
 	a.sessions[sessionKey] = &Session{
-		ID:        id,
+		ID:        seedKey,
 		CreatedAt: time.Now(),
 	}
 

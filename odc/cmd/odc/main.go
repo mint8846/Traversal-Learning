@@ -14,10 +14,6 @@ func main() {
 	}
 
 	udcClient := client.NewUDCClient(cfg)
-	if err = udcClient.Connect(); err != nil {
-		log.Fatal("Failed Connect", err)
-		return
-	}
 
 	modelPath, err := udcClient.GetModel()
 	if err != nil {

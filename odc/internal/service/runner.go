@@ -6,19 +6,19 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/mint8846/Traversal-Learning/odc/internal/config"
 )
 
 type RunnerService struct {
-	cfg *config.Config
+	modelScriptPath string
 }
 
-func NewRunnerService(cfg *config.Config) *RunnerService {
-	return &RunnerService{cfg: cfg}
+func NewRunnerService(modelScriptPath string) *RunnerService {
+	return &RunnerService{
+		modelScriptPath: modelScriptPath,
+	}
 }
 
-func (r *RunnerService) ExecuteModel(modelPath string) error {
+func (r *RunnerService) ExecuteModel(modelPath string, params ...string) error {
 	// 1. Load docker image from tar
 	imageName, err := r.loadContainerImage(modelPath)
 	if err != nil {
@@ -26,7 +26,7 @@ func (r *RunnerService) ExecuteModel(modelPath string) error {
 	}
 	log.Printf("ExecuteModel: imageName: %s", imageName)
 
-	if err = r.runContainer(); err != nil {
+	if err = r.runContainer(params...); err != nil {
 		return err
 	}
 	return nil
@@ -46,7 +46,7 @@ func (r *RunnerService) CheckResultData(path string) error {
 }
 
 func (r *RunnerService) loadContainerImage(modelPath string) (string, error) {
-	//log.Printf("loadContainerImage: Loading docker image from: %s", r.cfg.ModelPath)
+	//log.Printf("loadContainerImage: Loading docker image from: %s", modelPath)
 	cmd := exec.Command("docker", "load", "-i", modelPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -68,16 +68,18 @@ func (r *RunnerService) loadContainerImage(modelPath string) (string, error) {
 	return "", fmt.Errorf("could not find loaded image name")
 }
 
-func (r *RunnerService) runContainer() error {
-	if err := exec.Command("chmod", "+x", r.cfg.ModelScript).Run(); err != nil {
+func (r *RunnerService) runContainer(params ...string) error {
+	if err := exec.Command("chmod", "+x", r.modelScriptPath).Run(); err != nil {
 		return fmt.Errorf("runContainer: chmod failed: %v", err)
 	}
-	cmd := exec.Command(r.cfg.ModelScript)
+
+	cmd := exec.Command(r.modelScriptPath, params...)
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("runContainer: failed: %v, output: %s", err, string(output))
 	}
 
-	log.Printf("runContainer success(%s)", output)
+	log.Printf("runContainer success with params: %v", params)
 	return nil
 }

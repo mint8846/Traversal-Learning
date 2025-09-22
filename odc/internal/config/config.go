@@ -35,9 +35,11 @@ type OTP struct {
 func Load() (*Config, error) {
 	seed := getEnv("OTP_SEED", uuid.NewString())
 	log.Printf("config: seed key(%s)", seed)
+	sessionKey := utils.HashB64([]byte(seed))
+	log.Printf("config: session key(%s)", sessionKey)
 
 	return &Config{
-		SessionKey: utils.HashB64([]byte(seed)),
+		SessionKey: sessionKey,
 		ResultFile: "/tmp/odc/result.txt",
 		ID:         getEnv("ODC_ID", "odc_id"),
 		NFSPath:    getEnv("MOUNT_PATH", "/tmp/nfs"),

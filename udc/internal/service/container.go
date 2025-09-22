@@ -14,11 +14,13 @@ var Default *Container
 
 func Initialize(cfg *config.Config) {
 	Default = &Container{
-		Cfg:    cfg,
-		File:   &FileService{cfg: cfg},
-		NFS:    &NFSService{cfg: cfg},
-		OTP:    &OTPService{},
-		Runner: &RunnerService{cfg: cfg},
+		Cfg:  cfg,
+		File: &FileService{cfg: cfg},
+		NFS:  &NFSService{cfg: cfg},
+		OTP:  &OTPService{},
+		Runner: &RunnerService{
+			modelScriptPath: cfg.ModelScript,
+		},
 	}
 
 	Default.NFS.SetupSignalHandler()

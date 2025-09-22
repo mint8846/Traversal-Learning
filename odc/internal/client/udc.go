@@ -3,15 +3,12 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/mint8846/Traversal-Learning/odc/internal/config"
 	"github.com/mint8846/Traversal-Learning/odc/internal/model"
 	"github.com/mint8846/Traversal-Learning/odc/internal/service"
-	"github.com/mint8846/Traversal-Learning/odc/internal/utils"
 )
 
 type UDCClient struct {
@@ -34,47 +31,14 @@ func NewUDCClient(cfg *config.Config) *UDCClient {
 		otp:    &service.OTPService{},
 		nfs:    service.NewNFSService(cfg),
 		file:   service.NewFileService(cfg),
-		runner: service.NewRunnerService(cfg),
+		runner: service.NewRunnerService(cfg.ModelScript),
 	}
-}
-
-func (u *UDCClient) Connect() error {
-	resp, err := u.http.Get("/api/connect", WithHeader("X-SEED-ID", u.cfg.OTP.Seed))
-
-	if err != nil {
-		return fmt.Errorf("connect: request Fail: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("connect: response Read Fail: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("connect: response Error(%d) %s", resp.StatusCode, string(body))
-	}
-
-	var response model.ConnectResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		log.Printf("Connect: body data(%s)", body)
-		return fmt.Errorf("JSON parsing error: %w", err)
-	}
-
-	if u.cfg.UDC.ID != "" && u.cfg.UDC.ID != response.ID {
-		log.Fatalf("Connect: Access denied ID %s is not allowed (expected: %s)", response.ID, u.cfg.UDC.ID)
-	}
-
-	u.http.AddDefaultHeader("X-Session-Key", u.cfg.SessionKey)
-
-	log.Printf("Connect success (%s)", utils.HashB64([]byte(u.cfg.OTP.Seed)))
-	return nil
 }
 
 func (u *UDCClient) GetModel() (string, error) {
 	requestTime := time.Now()
 
-	resp, err := u.http.Post("/api/model", nil)
+	resp, err := u.http.Post("/api/model", nil, WithHeader("X-SEED-ID", u.cfg.OTP.Seed))
 	if err != nil {
 		return "", fmt.Errorf("GetModel: Request Fail: %v", err)
 	}
@@ -91,6 +55,12 @@ func (u *UDCClient) GetModel() (string, error) {
 		return "", fmt.Errorf("JSON parsing error: %v", err)
 	}
 
+	// validate UDC ID
+	if u.cfg.UDC.ID != "" && u.cfg.UDC.ID != response.ID {
+		log.Fatalf("Connect: Access denied ID %s is not allowed (expected: %s)", response.ID, u.cfg.UDC.ID)
+	}
+
+	// NFS connect
 	if err = u.nfs.Connect(response.Path); err != nil {
 		return "", fmt.Errorf("GetModel: NFS Connect fail %v", err)
 	}
@@ -135,7 +105,7 @@ func (u *UDCClient) EncryptResult() error {
 
 	// From the start of encryption to transmission, it must not exceed the config's OTP.Period time (encryption key changes)
 	// To resolve this, passing the encryption start time is necessary
-	resp, err := u.http.Post("/api/result", model.ResultDataRequest{FileName: fileName})
+	resp, err := u.http.Post("/api/result", model.ResultDataRequest{FileName: fileName}, WithHeader("X-Session-Key", u.cfg.SessionKey))
 	if err != nil {
 		return fmt.Errorf("EncryptResult: send result info fail %v", err)
 	}

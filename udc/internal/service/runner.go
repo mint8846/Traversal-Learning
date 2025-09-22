@@ -3,23 +3,24 @@ package service
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/mint8846/Traversal-Learning/udc/internal/config"
 )
 
 type RunnerService struct {
-	cfg *config.Config
+	modelScriptPath string
 }
 
-func NewRunnerService(cfg *config.Config) *RunnerService {
-	return &RunnerService{cfg: cfg}
-}
+//func NewRunnerService(modelScriptPath string) *RunnerService {
+//	return &RunnerService{
+//		modelScriptPath: modelScriptPath,
+//	}
+//}
 
-func (r *RunnerService) ExecuteModel(params ...string) error {
+func (r *RunnerService) ExecuteModel(modelPath string, params ...string) error {
 	// 1. Load docker image from tar
-	imageName, err := r.loadContainerImage()
+	imageName, err := r.loadContainerImage(modelPath)
 	if err != nil {
 		return err
 	}
@@ -31,9 +32,22 @@ func (r *RunnerService) ExecuteModel(params ...string) error {
 	return nil
 }
 
-func (r *RunnerService) loadContainerImage() (string, error) {
-	//log.Printf("loadContainerImage: Loading docker image from: %s", r.cfg.ModelPath)
-	cmd := exec.Command("docker", "load", "-i", r.cfg.ModelPath)
+func (r *RunnerService) CheckResultData(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	if os.IsNotExist(err) {
+		return fmt.Errorf("CheckResultData: result file not exist(%s)", path)
+	}
+	log.Printf("CheckResultData: file size(%d)", info.Size())
+	return nil
+}
+
+func (r *RunnerService) loadContainerImage(modelPath string) (string, error) {
+	//log.Printf("loadContainerImage: Loading docker image from: %s", modelPath)
+	cmd := exec.Command("docker", "load", "-i", modelPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("loadContainerImage: docker load failed: %v", err)
@@ -55,11 +69,11 @@ func (r *RunnerService) loadContainerImage() (string, error) {
 }
 
 func (r *RunnerService) runContainer(params ...string) error {
-	if err := exec.Command("chmod", "+x", r.cfg.ModelScript).Run(); err != nil {
+	if err := exec.Command("chmod", "+x", r.modelScriptPath).Run(); err != nil {
 		return fmt.Errorf("runContainer: chmod failed: %v", err)
 	}
 
-	cmd := exec.Command(r.cfg.ModelScript, params...)
+	cmd := exec.Command(r.modelScriptPath, params...)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

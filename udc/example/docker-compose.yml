@@ -14,9 +14,9 @@ services:
       - "20048:20048/udp"   # Mountd
     environment:
       # recommend using UDC container hash
-      - UDC_ID=b4e92018ba7f08ac1b75991052460d194ca5c88a766a45c7b914d57a524f16ad
+      - UDC_ID=aac2b58fd443a967be57a9709b0e3bbe8fa0624809575864d7f9f97843308383
       # ODC container ID (Hash). If not provided, validation is skipped
-      - ODC_ID=b47db6afe3254cf4a3797603227d0e7b993fcd20584ffec7d2cc5545066a2407
+      - ODC_ID=1f6192368575283bd3eb84801033cc94f7e6a5c94658f8151d846ed0e3108fc4
       # If specified, only allow that IP. Otherwise, allow all IPs
       - ODC_IP=
       # UDC HOST information. If empty, it will be set to the public IP.
